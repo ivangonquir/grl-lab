@@ -5,7 +5,6 @@
 .venv.production
 *.venv
 data/
-images/
 __pycache__/
 *.pyc
 *.pyo
