@@ -1,0 +1,6 @@
+.venv
+.venv.local
+.venv.development
+.venv.test
+.venv.production
+*.venv
