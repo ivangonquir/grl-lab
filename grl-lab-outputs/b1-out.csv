@@ -1,0 +1,5 @@
+,Model,Test Accuracy
+0,Logistic Regression,0.65
+1,Linear SVM,0.65
+2,RBF SVM,0.589
+3,Random Forest,0.755

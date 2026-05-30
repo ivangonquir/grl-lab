@@ -5,6 +5,10 @@ from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score
+from torch_geometric.datasets import Planetoid
+
+dataset = Planetoid(root='data/PubMed', name='PubMed')
+data = dataset[0]
 
 X = data.x.numpy()
 y = data.y.numpy()
@@ -33,4 +37,5 @@ for name, (clf, use_scaled) in classifiers.items():
     acc = accuracy_score(y_test, clf.predict(Xte))
     rows.append({'Model': name, 'Test Accuracy': round(acc, 4)})
 
-print(pd.DataFrame(rows).to_string(index=False))
+df = pd.DataFrame(rows)
+df.to_csv('grl-lab-outputs/b1-out.csv')

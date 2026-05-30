@@ -1,8 +1,21 @@
+import os
 import numpy as np
+import torch
 from sklearn.metrics.pairwise import cosine_similarity
+from torch_geometric.datasets import Planetoid
+
+OUTPUTS_DIR = 'grl-lab-outputs'
+
+dataset = Planetoid(root='data/PubMed', name='PubMed')
+data = dataset[0]
+
+mappings = torch.load(os.path.join(OUTPUTS_DIR, 'a1_mappings.pt'), weights_only=False)
+entity_to_id = mappings['entity_to_id']
+
+embs = np.load(os.path.join(OUTPUTS_DIR, 'b7_embs.npy'))
 
 # Align KGE embeddings to PyG node indexing
-kge_raw = torch.load('best_transe_emb.pt').numpy()    # [N_entities, kge_dim]
+kge_raw = torch.load(os.path.join(OUTPUTS_DIR, 'best_transe_entity_emb.pt'), weights_only=False).numpy()
 kge_aligned = np.zeros((data.num_nodes, kge_raw.shape[1]))
 for label, kge_id in entity_to_id.items():
     pyg_idx = int(label.replace('paper_', '')) if label.startswith('paper_') else int(label)

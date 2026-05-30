@@ -1,5 +1,9 @@
-from creating_the_kg import *
+import os
 import torch
+
+OUTPUTS_DIR = 'grl-lab-outputs'
+
+tf = torch.load(os.path.join(OUTPUTS_DIR, 'tf.pt'), weights_only=False)
 
 # Obtain the corruption probabilities here
 triples = tf.mapped_triples

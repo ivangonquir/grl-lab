@@ -1,7 +1,13 @@
-from creating_the_kg import *
+import os
 import torch
 from pykeen.pipeline import pipeline
-import os
+
+OUTPUTS_DIR = 'grl-lab-outputs'
+
+tf         = torch.load(os.path.join(OUTPUTS_DIR, 'tf.pt'),         weights_only=False)
+training   = torch.load(os.path.join(OUTPUTS_DIR, 'training.pt'),   weights_only=False)
+testing    = torch.load(os.path.join(OUTPUTS_DIR, 'testing.pt'),    weights_only=False)
+validation = torch.load(os.path.join(OUTPUTS_DIR, 'validation.pt'), weights_only=False)
 
 
 def train_basic_model():
@@ -20,7 +26,6 @@ model = train_basic_model()
 
 
 # === A.1 — Retrieval ===
-# Extract learned embeddings from the PyKEEN model
 entity_embeddings   = model.entity_representations[0](indices=None).detach().cpu()
 relation_embeddings = model.relation_representations[0](indices=None).detach().cpu()
 
@@ -73,13 +78,11 @@ e_P = entity_embeddings[chosen_paper_id]
 print(f"||h* - e_{chosen_paper_str}|| = {torch.norm(h_star - e_P).item():.4f}")
 
 
-
 # === A.1 — 2D PCA visualisation ===
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 
-# Fit PCA on the full embedding space, then project the points of interest
 all_emb = entity_embeddings.cpu().numpy()
 pca     = PCA(n_components=2).fit(all_emb)
 
@@ -88,9 +91,8 @@ cited_2d     = pca.transform(entity_embeddings[train_cited_ids].cpu().numpy())
 h_star_2d    = pca.transform(h_star.cpu().numpy().reshape(1, -1))[0]
 retrieved_2d = pca.transform(entity_embeddings[retrieved_id].cpu().numpy().reshape(1, -1))[0]
 
-
 IMAGES_DIR = 'images'
-os.makedirs(IMAGES_DIR, exist_ok = True)
+os.makedirs(IMAGES_DIR, exist_ok=True)
 
 plt.figure(figsize=(8, 6))
 plt.scatter(*chosen_2d,     color='royalblue', s=140, marker='o', label=f'Chosen paper ({chosen_paper_str})')
@@ -107,3 +109,13 @@ plt.grid(True, alpha=0.3)
 plt.tight_layout()
 plt.savefig('images/a1_2D_sketch.png', dpi=150, bbox_inches='tight')
 
+
+# Save embeddings and mappings for downstream scripts
+torch.save(entity_embeddings,   os.path.join(OUTPUTS_DIR, 'a1_entity_emb.pt'))
+torch.save(relation_embeddings, os.path.join(OUTPUTS_DIR, 'a1_relation_emb.pt'))
+torch.save({
+    'entity_to_id':    entity_to_id,
+    'id_to_entity':    id_to_entity,
+    'relation_to_id':  relation_to_id,
+    'cites_relation_id': cites_relation_id,
+}, os.path.join(OUTPUTS_DIR, 'a1_mappings.pt'))

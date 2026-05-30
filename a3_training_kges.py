@@ -1,15 +1,3 @@
-# ============================================================
-# A.3 - Train KGE models, sweep best model (DistMult), save embeddings
-#
-# Saves all outputs locally to ./grl-lab-outputs/.
-# Adjust `output_dir` below if you want a different location.
-#
-# Prerequisites: `training`, `validation`, `testing`, and `tf`
-# (TriplesFactory) must already be defined in the running
-# environment (typically from an earlier cell that loads and
-# splits the PubMed citation graph).
-# ============================================================
-
 import os
 import torch
 import pandas as pd
@@ -21,6 +9,10 @@ from pykeen.pipeline import pipeline
 
 output_dir = './grl-lab-outputs'
 os.makedirs(output_dir, exist_ok=True)
+
+training   = torch.load(os.path.join(output_dir, 'training.pt'),   weights_only=False)
+testing    = torch.load(os.path.join(output_dir, 'testing.pt'),    weights_only=False)
+validation = torch.load(os.path.join(output_dir, 'validation.pt'), weights_only=False)
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f"Using device: {device}")
@@ -268,9 +260,7 @@ print(relation_to_id_path)
 
 
 # ------------------------------------------------------------
-# 9. Optional: also save the best TransE embeddings for comparison
-#    This is useful because the assignment mentions TransE often,
-#    but the main embeddings to keep are still the best overall ones.
+# 9. Also save the best TransE embeddings for comparison
 # ------------------------------------------------------------
 
 transe_candidates = [name for name in df.index if name.startswith('TransE')]
@@ -305,13 +295,9 @@ print(f"""
 The best-performing run according to MRR is: {best_name}.
 
 Since the best base model was DistMult, the hyperparameter sweep was performed on DistMult.
-This is more coherent than sweeping TransE, because the goal of A.3 is not only to compare
+This is more coherent than sweeping TransE, because the goal of is not only to compare
 models but also to keep the best-performing embeddings for later tasks.
-
-The saved file 'best_kge_entity_emb.pt' should therefore be used later for the KGE
-initialization in the GNN part.
 """)
-
 
 
 
