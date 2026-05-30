@@ -1,24 +1,30 @@
 # ============================================================
 # A.3 - Train KGE models, sweep best model (DistMult), save embeddings
+#
+# Saves all outputs locally to ./grl-lab-outputs/.
+# Adjust `output_dir` below if you want a different location.
+#
+# Prerequisites: `training`, `validation`, `testing`, and `tf`
+# (TriplesFactory) must already be defined in the running
+# environment (typically from an earlier cell that loads and
+# splits the PubMed citation graph).
 # ============================================================
 
 import os
 import torch
 import pandas as pd
-from google.colab import drive
 from pykeen.pipeline import pipeline
 
 # ------------------------------------------------------------
-# 1. Google Drive setup
+# 1. Local output directory
 # ------------------------------------------------------------
 
-drive.mount('/content/drive/')
-
-drive_dir = '/content/drive/MyDrive/university/masters/mds/q2/sdm/labs/grl-lab'
-os.makedirs(drive_dir, exist_ok=True)
+output_dir = './grl-lab-outputs'
+os.makedirs(output_dir, exist_ok=True)
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f"Using device: {device}")
+print(f"Output directory: {os.path.abspath(output_dir)}")
 
 
 # ------------------------------------------------------------
@@ -185,7 +191,7 @@ print("==============================")
 print(df)
 
 # Save results table
-metrics_path = os.path.join(drive_dir, 'a3_kge_results.csv')
+metrics_path = os.path.join(output_dir, 'a3_kge_results.csv')
 df.to_csv(metrics_path)
 
 print(f"\nSaved metrics table to:")
@@ -222,8 +228,8 @@ with torch.no_grad():
     best_entity_emb = best_model.entity_representations[0]().detach().cpu()
     best_relation_emb = best_model.relation_representations[0]().detach().cpu()
 
-entity_emb_path = os.path.join(drive_dir, 'best_kge_entity_emb.pt')
-relation_emb_path = os.path.join(drive_dir, 'best_kge_relation_emb.pt')
+entity_emb_path = os.path.join(output_dir, 'best_kge_entity_emb.pt')
+relation_emb_path = os.path.join(output_dir, 'best_kge_relation_emb.pt')
 
 torch.save(best_entity_emb, entity_emb_path)
 torch.save(best_relation_emb, relation_emb_path)
@@ -243,8 +249,8 @@ print(f"Relation embedding shape: {best_relation_emb.shape}")
 entity_to_id = training.entity_to_id
 relation_to_id = training.relation_to_id
 
-entity_to_id_path = os.path.join(drive_dir, 'entity_to_id.csv')
-relation_to_id_path = os.path.join(drive_dir, 'relation_to_id.csv')
+entity_to_id_path = os.path.join(output_dir, 'entity_to_id.csv')
+relation_to_id_path = os.path.join(output_dir, 'relation_to_id.csv')
 
 pd.DataFrame(
     list(entity_to_id.items()),
@@ -279,7 +285,7 @@ if len(transe_candidates) > 0:
     with torch.no_grad():
         best_transe_entity_emb = best_transe_model.entity_representations[0]().detach().cpu()
 
-    best_transe_emb_path = os.path.join(drive_dir, 'best_transe_entity_emb.pt')
+    best_transe_emb_path = os.path.join(output_dir, 'best_transe_entity_emb.pt')
     torch.save(best_transe_entity_emb, best_transe_emb_path)
 
     print("\nAlso saved best TransE entity embeddings:")
@@ -305,3 +311,65 @@ models but also to keep the best-performing embeddings for later tasks.
 The saved file 'best_kge_entity_emb.pt' should therefore be used later for the KGE
 initialization in the GNN part.
 """)
+
+
+
+
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
+
+def get_metrics(v):
+    """
+    Handles:
+    - old format: (result, metrics)
+    - metrics dict directly
+    - new unified format: {'result': ..., 'metrics': ..., ...}
+    """
+    if isinstance(v, tuple):
+        return v[1]
+    if isinstance(v, dict) and 'metrics' in v:
+        return v['metrics']
+    return v
+
+def extract_sweep(prefix):
+    keys = sorted(
+        [k for k in sweep_results if k.startswith(prefix)],
+        key=lambda k: float(k.split('=')[1])
+    )
+
+    xs = [float(k.split('=')[1]) for k in keys]
+    hits1 = [get_metrics(sweep_results[k])['Hits@1'] for k in keys]
+    hits3 = [get_metrics(sweep_results[k])['Hits@3'] for k in keys]
+    mrr   = [get_metrics(sweep_results[k])['MRR']    for k in keys]
+
+    return xs, hits1, hits3, mrr
+
+plots = [
+    ('DistMult_dim=',    'Embedding dimension',          'dim',    True),
+    ('DistMult_neg=',    'Negative samples per positive', 'negs',   True),
+    ('DistMult_margin=', 'Loss margin',                   'margin', False),
+]
+
+for prefix, xlabel, name, logx in plots:
+    xs, h1, h3, mrr = extract_sweep(prefix)
+
+    fig, ax = plt.subplots(figsize=(5, 4))
+
+    ax.plot(xs, h1,  marker='o', label='Hits@1')
+    ax.plot(xs, h3,  marker='s', label='Hits@3')
+    ax.plot(xs, mrr, marker='^', label='MRR')
+
+    if logx:
+        ax.set_xscale('log')
+        ax.xaxis.set_major_formatter(mticker.ScalarFormatter())
+
+    ax.set_xticks(xs)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel('Metric value')
+    ax.set_title(f'Effect of {xlabel.lower()} on DistMult')
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+
+    plt.tight_layout()
+    plt.savefig(f'images/distmult_sweep_{name}.png', dpi=150, bbox_inches='tight')
+    plt.show()

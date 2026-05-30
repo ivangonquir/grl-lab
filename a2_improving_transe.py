@@ -1,4 +1,6 @@
 from creating_the_kg import * 
+from a1_basic_model import id_to_entity, entity_to_id, cites_relation_id
+from pykeen.pipeline import pipeline
 import torch
 
 # 1. Fin a one-to-many hub in the data
