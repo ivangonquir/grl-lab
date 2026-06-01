@@ -5,6 +5,7 @@ from torch_geometric.nn import GCNConv
 from torch_geometric.datasets import Planetoid
 from b2_exploiting_the_graph_structure import train_epoch, evaluate
 
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 dataset = Planetoid(root='data/PubMed', name='PubMed')
@@ -33,6 +34,8 @@ criterion = nn.CrossEntropyLoss()
 
 depth_results = {}
 for num_layers in [2, 4, 8, 16]:
+    torch.manual_seed(2026)
+    torch.cuda.manual_seed(2026)
     model = DeepGNN(500, 256, 3, num_layers=num_layers).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4)
     best_val, best_test = 0, 0
@@ -43,3 +46,28 @@ for num_layers in [2, 4, 8, 16]:
             best_val, best_test = accs['val'], accs['test']
     depth_results[num_layers] = best_test
     print(f"{num_layers} layers: test = {best_test:.4f}")
+    
+    
+    
+import os
+import matplotlib.pyplot as plt
+
+os.makedirs('images', exist_ok=True)
+
+depths = list(depth_results.keys())
+accs   = list(depth_results.values())
+
+fig, ax = plt.subplots(figsize=(6, 4))
+ax.plot(depths, accs, marker='o', linewidth=2, markersize=8, color='crimson')
+ax.axhline(0.40, color='gray', linestyle='--', alpha=0.6,
+           label='Majority-class baseline ($\\approx 0.40$)')
+ax.set_xticks(depths)
+ax.set_xlabel('Number of GCN layers')
+ax.set_ylabel('Test accuracy')
+ax.set_title('Effect of GNN depth on classification accuracy')
+ax.set_ylim(0.3, 0.85)
+ax.grid(True, alpha=0.3)
+ax.legend()
+plt.tight_layout()
+plt.savefig('images/b4_depth_accuracy.png', dpi=150, bbox_inches='tight')
+plt.show()

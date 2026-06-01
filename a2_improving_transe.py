@@ -67,3 +67,25 @@ print(f"Compression Ratio: {hub_distances.mean().item() / global_distances.mean(
 hub_label = id_to_entity[hub_head_id]
 for t_id in target_paper_ids[:5]:
     print(f"({hub_label}, cites, {id_to_entity[t_id]})")
+    
+    
+    
+import matplotlib.pyplot as plt
+import numpy as np
+
+fig, ax = plt.subplots(figsize=(7, 4))
+bins = np.linspace(0, max(global_distances.max().item(),
+                          hub_distances.max().item()), 50)
+ax.hist(global_distances.cpu().numpy(), bins=bins, alpha=0.55, color='steelblue',
+        density=True, label=f'Random pairs (mean = {global_distances.mean():.3f})')
+ax.hist(hub_distances.cpu().numpy(), bins=bins, alpha=0.55, color='crimson',
+        density=True, label=f'Hub citations (mean = {hub_distances.mean():.3f})')
+ax.axvline(global_distances.mean().item(), color='steelblue', linestyle='--')
+ax.axvline(hub_distances.mean().item(), color='crimson', linestyle='--')
+ax.set_xlabel('Pairwise L2 distance')
+ax.set_ylabel('Density')
+ax.set_title('Pairwise distances in TransE embedding space')
+ax.legend()
+ax.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.savefig('images/a2_distance_distributions.png', dpi=150, bbox_inches='tight')
