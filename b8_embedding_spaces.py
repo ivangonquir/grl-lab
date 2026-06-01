@@ -15,7 +15,7 @@ entity_to_id = mappings['entity_to_id']
 embs = np.load(os.path.join(OUTPUTS_DIR, 'b7_embs.npy'))
 
 # Align KGE embeddings to PyG node indexing
-kge_raw = torch.load(os.path.join(OUTPUTS_DIR, 'best_transe_entity_emb.pt'), weights_only=False).numpy()
+kge_raw = torch.load(os.path.join(OUTPUTS_DIR, 'best_kge_entity_emb.pt'), weights_only=False).numpy()
 kge_aligned = np.zeros((data.num_nodes, kge_raw.shape[1]))
 for label, kge_id in entity_to_id.items():
     pyg_idx = int(label.replace('paper_', '')) if label.startswith('paper_') else int(label)

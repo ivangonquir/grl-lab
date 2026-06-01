@@ -45,15 +45,15 @@ data.x = x_original
 # --- B.5.2: KGE initialisation ---
 
 # Load TransE embeddings from disk (file produced by section 9 of A.3)
-transe_emb = torch.load(os.path.join(OUTPUTS_DIR, 'best_transe_entity_emb.pt'), weights_only=False)
-emb_dim = transe_emb.shape[1]
+kge_emb = torch.load(os.path.join(OUTPUTS_DIR, 'best_kge_entity_emb.pt'), weights_only=False)
+emb_dim = kge_emb.shape[1]
 
 # Align KGE rows to PyG node order
 x_kge = torch.zeros(data.num_nodes, emb_dim)
 for label, kge_id in entity_to_id.items():
     pyg_idx = int(label.replace('paper_', '')) if label.startswith('paper_') else int(label)
     if 0 <= pyg_idx < data.num_nodes:
-        x_kge[pyg_idx] = transe_emb[kge_id]
+        x_kge[pyg_idx] = kge_emb[kge_id]
 
 # Swap in the KGE features
 x_original = data.x.clone()

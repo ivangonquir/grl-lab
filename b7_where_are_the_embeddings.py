@@ -32,31 +32,59 @@ class GNN(nn.Module):
         x = F.dropout(x, p=self.dropout, training=self.training)
 
         if return_embs:
-            return x                       # 256-dim node embeddings
-
-        return self.classifier(x)          # 3-dim class logits
-
-gnn_model = GNN(dataset.num_node_features, 256, dataset.num_classes).to(device)
-optimizer = torch.optim.Adam(gnn_model.parameters(), lr=0.01, weight_decay=5e-4)
+            return x
+        return self.classifier(x)
 
 
 def train_gnn(model):
     model.train()
     optimizer.zero_grad()
     out = model(data.x, data.edge_index)
-    loss = F.cross_entropy(out[data.train_mask].to(device), data.y[data.train_mask].to(device))
+    loss = F.cross_entropy(
+        out[data.train_mask].to(device),
+        data.y[data.train_mask].to(device)
+    )
     loss.backward()
     optimizer.step()
     return loss.item()
 
+
+@torch.no_grad()
+def evaluate_gnn(model):
+    model.eval()
+    pred = model(data.x, data.edge_index).argmax(dim=1)
+    return {
+        split: (pred[mask] == data.y.to(device)[mask]).float().mean().item()
+        for split, mask in [
+            ('train', data.train_mask),
+            ('val',   data.val_mask),
+            ('test',  data.test_mask)
+        ]
+    }
+
+
+gnn_model = GNN(dataset.num_node_features, 256, dataset.num_classes).to(device)
+optimizer = torch.optim.Adam(gnn_model.parameters(), lr=0.01, weight_decay=5e-4)
+
+best_val, best_state = 0, None
 for epoch in range(500):
     loss = train_gnn(gnn_model)
+    if epoch % 10 == 0:
+        accs = evaluate_gnn(gnn_model)
+        if accs['val'] > best_val:
+            best_val = accs['val']
+            best_state = {k: v.clone() for k, v in gnn_model.state_dict().items()}
+        if epoch % 50 == 0:
+            print(f"epoch {epoch:3d}  loss={loss:.4f}  "
+                  f"val={accs['val']:.3f}  test={accs['test']:.3f}")
 
+gnn_model.load_state_dict(best_state)
+print(f"\nBest val: {best_val:.4f}")
 
+# Extract embeddings
 gnn_model.eval()
 embs = gnn_model(data.x, data.edge_index, return_embs=True)
 embs = embs.detach().cpu().numpy()
-
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -81,11 +109,15 @@ for emb_2d, ax, name in [(embs_pca, axes[0], 'PCA'),
         ax.scatter(emb_2d[m, 0], emb_2d[m, 1], s=8, alpha=0.6, label=class_names[c])
     ax.set_title(f'GNN node embeddings — {name}')
     ax.legend(fontsize=9)
-    ax.set_xticks([]); ax.set_yticks([])
+    ax.set_xticks([])
+    ax.set_yticks([])
+
 axes[0].set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]:.1%})')
 axes[0].set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]:.1%})')
 plt.tight_layout()
-plt.savefig('images/embeddings_pca.png')
+plt.savefig('images/embeddings.png', dpi=150, bbox_inches='tight')
+plt.show()
 
-# Save embeddings for b8
+# Save embeddings for B.8
 np.save(os.path.join(OUTPUTS_DIR, 'b7_embs.npy'), embs)
+print(f"Saved embeddings: {embs.shape}")
