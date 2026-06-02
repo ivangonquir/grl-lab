@@ -15,7 +15,7 @@ The first part explores representation learning on a citation knowledge graph de
 - Construction of a citation knowledge graph.
 - Training a basic TransE model.
 - Analysis of embedding geometry and retrieval capabilities.
-- Hyperparameter tuning of TransE.
+- Hyperparameter tuning of best performing model.
 - Comparison of multiple KGE models, including:
   - TransE
   - TransH
